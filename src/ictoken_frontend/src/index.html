@@ -7,8 +7,10 @@
     <base href="/" />
     <link rel="icon" href="favicon.ico" />
     <link type="text/css" rel="stylesheet" href="main.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@dfinity/agent@0.13.1/dist/agent.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@dfinity/principal@0.13.1/dist/principal.umd.js"></script>
   </head>
-  <body>
+  <!-- <body>
     <main>
       <img src="logo2.svg" alt="DFINITY logo" />
       <br />
@@ -20,5 +22,83 @@
       </form>
       <section id="greeting"></section>
     </main>
+  </body> -->
+  <body>
+    <h1>Vote App</h1>
+  
+    <div id="question"></div>
+  
+    <div id="entries"></div>
+  
+    <form id="vote-form">
+      <input type="text" id="entry-input" placeholder="Enter entry">
+      <button type="submit">Vote</button>
+    </form>
+  
+    <button id="reset-button">Reset Votes</button>
+  
+    <script>
+      // Backend actor canister ID
+      const backendCanisterId = "be2us-64aaa-aaaaa-qaabq-cai";
+  
+      // Create an actor reference for the backend canister
+      const backendActor = actor.createActor(canisterId, {
+        agentOptions: {
+          canisterId: backendCanisterId,
+        },
+      });
+  
+      // Function to get the question
+      async function getQuestion() {
+        const question = await backendActor.getQuestion();
+        document.getElementById("question").textContent = question;
+      }
+  
+      // Function to get the list of entries and votes
+      async function getVotes() {
+        const entries = await backendActor.getVotes();
+        const entriesDiv = document.getElementById("entries");
+        entriesDiv.innerHTML = "";
+        entries.forEach(([entry, votes]) => {
+          const entryElement = document.createElement("div");
+          entryElement.textContent = `${entry}: ${votes}`;
+          entriesDiv.appendChild(entryElement);
+        });
+      }
+  
+      // Function to vote for an entry
+      async function vote(entry) {
+        await backendActor.vote(entry);
+        getVotes();
+      }
+  
+      // Function to reset the votes
+      async function resetVotes() {
+        await backendActor.resetVotes();
+        getVotes();
+      }
+  
+      // Get the question and votes when the page loads
+      window.addEventListener("load", async () => {
+        await getQuestion();
+        await getVotes();
+      });
+  
+      // Handle form submission to vote for an entry
+      document.getElementById("vote-form").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const entryInput = document.getElementById("entry-input");
+        const entry = entryInput.value.trim();
+        if (entry !== "") {
+          vote(entry);
+          entryInput.value = "";
+        }
+      });
+  
+      // Handle reset button click to reset the votes
+      document.getElementById("reset-button").addEventListener("click", () => {
+        resetVotes();
+      });
+    </script>
   </body>
-</html>
+  </html>

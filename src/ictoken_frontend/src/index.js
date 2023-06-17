@@ -1,19 +1,53 @@
-import { ictoken_backend } from "../../declarations/ictoken_backend";
+import { Principal } from "@dfinity/principal";
 
-document.querySelector("form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const button = e.target.querySelector("button");
+// Create an actor reference for the backend canister
+const backendActor = actor.createActor(canisterId, {
+  agentOptions: {
+    canisterId: backendCanisterId,
+  },
+});
 
-  const name = document.getElementById("name").value.toString();
+// Function to get the question
+async function getQuestion() {
+  const question = await backendActor.getQuestion();
+  return question;
+}
 
-  button.setAttribute("disabled", true);
+// Function to get the list of entries and votes
+async function getVotes() {
+  const entries = await backendActor.getVotes();
+  return entries;
+}
 
-  // Interact with foo actor, calling the greet method
-  const greeting = await ictoken_backend.greet(name);
+// Function to vote for an entry
+async function vote(entry) {
+  await backendActor.vote(entry);
+}
 
-  button.removeAttribute("disabled");
+// Function to reset the votes
+async function resetVotes() {
+  await backendActor.resetVotes();
+}
 
-  document.getElementById("greeting").innerText = greeting;
+// Example usage:
 
-  return false;
+// Get the question
+getQuestion().then((question) => {
+  console.log("Question:", question);
+});
+
+// Get the list of entries and votes
+getVotes().then((entries) => {
+  console.log("Entries:", entries);
+});
+
+// Vote for an entry
+const entry = "Motoko";
+vote(entry).then(() => {
+  console.log("Voted for", entry);
+});
+
+// Reset the votes
+resetVotes().then(() => {
+  console.log("Votes reset");
 });
