@@ -1,104 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>ictoken</title>
-    <base href="/" />
-    <link rel="icon" href="favicon.ico" />
-    <link type="text/css" rel="stylesheet" href="main.css" />
-    <script src="https://cdn.jsdelivr.net/npm/@dfinity/agent@0.13.1/dist/agent.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@dfinity/principal@0.13.1/dist/principal.umd.js"></script>
-  </head>
-  <!-- <body>
-    <main>
-      <img src="logo2.svg" alt="DFINITY logo" />
-      <br />
-      <br />
-      <form action="#">
-        <label for="name">Enter your name: &nbsp;</label>
-        <input id="name" alt="Name" type="text" />
-        <button type="submit">Click Me!</button>
-      </form>
-      <section id="greeting"></section>
-    </main>
-  </body> -->
-  <body>
-    <h1>Vote App</h1>
-  
-    <div id="question"></div>
-  
-    <div id="entries"></div>
-  
-    <form id="vote-form">
-      <input type="text" id="entry-input" placeholder="Enter entry">
-      <button type="submit">Vote</button>
-    </form>
-  
-    <button id="reset-button">Reset Votes</button>
-  
-    <script>
-      // Backend actor canister ID
-      const backendCanisterId = "be2us-64aaa-aaaaa-qaabq-cai";
-  
-      // Create an actor reference for the backend canister
-      const backendActor = actor.createActor(canisterId, {
-        agentOptions: {
-          canisterId: backendCanisterId,
-        },
-      });
-  
-      // Function to get the question
-      async function getQuestion() {
-        const question = await backendActor.getQuestion();
-        document.getElementById("question").textContent = question;
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple poll dapp hosted on an ICP canister smart contract</title>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
       }
-  
-      // Function to get the list of entries and votes
-      async function getVotes() {
-        const entries = await backendActor.getVotes();
-        const entriesDiv = document.getElementById("entries");
-        entriesDiv.innerHTML = "";
-        entries.forEach(([entry, votes]) => {
-          const entryElement = document.createElement("div");
-          entryElement.textContent = `${entry}: ${votes}`;
-          entriesDiv.appendChild(entryElement);
-        });
+
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        position: relative;
       }
-  
-      // Function to vote for an entry
-      async function vote(entry) {
-        await backendActor.vote(entry);
-        getVotes();
+
+      .title-container {
+        border: 2px solid #007bff;
+        background-color: #f0f0f0;
+        padding: 20px;
+        border-radius: 5px;
       }
-  
-      // Function to reset the votes
-      async function resetVotes() {
-        await backendActor.resetVotes();
-        getVotes();
+
+      h1 {
+        font-size: 32px;
+        margin-bottom: 20px;
+        text-align: center;
+        margin-top: 0;
       }
-  
-      // Get the question and votes when the page loads
-      window.addEventListener("load", async () => {
-        await getQuestion();
-        await getVotes();
-      });
-  
-      // Handle form submission to vote for an entry
-      document.getElementById("vote-form").addEventListener("submit", (event) => {
-        event.preventDefault();
-        const entryInput = document.getElementById("entry-input");
-        const entry = entryInput.value.trim();
-        if (entry !== "") {
-          vote(entry);
-          entryInput.value = "";
-        }
-      });
-  
-      // Handle reset button click to reset the votes
-      document.getElementById("reset-button").addEventListener("click", () => {
-        resetVotes();
-      });
-    </script>
-  </body>
-  </html>
+
+      h2 {
+        font-size: 24px;
+        margin-bottom: 10px;
+        text-align: center;
+      }
+
+      form {
+        margin-bottom: 20px;
+        border: 2px solid #8bc34a;
+        padding: 20px;
+        border-radius: 5px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 10px;
+        font-size: 18px;
+        text-align: left;
+      }
+
+      input[type="radio"] {
+        margin-right: 5px;
+      }
+
+      button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        border: none;
+        color: #fff;
+        font-size: 18px;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+
+      button#reset {
+        background-color: #dc3545;
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        margin: 10px 0; /* Add margin */
+      }
+
+      button:hover {
+        background-color: #0056b3;
+      }
+
+      #results {
+        margin-top: 20px;
+        font-size: 18px;
+        border: 2px solid #8bc34a;
+        padding: 20px;
+        border-radius: 5px;
+        position: relative;
+      }
+    </style>
+</head>
+<body>
+    <div class="container">
+      <div class="title-container">
+        <h1>Simple Voting Poll</h1>
+      </div>
+      <h2 id="question">Sample Question</h2>
+
+      <!-- Form where users vote -->
+      <div class="form-container">
+        <form id="radioForm">
+            <label>
+                <input type="radio" name="option" value="Rust"> Rust
+            </label><br>
+            <label>
+                <input type="radio" name="option" value="Motoko"> Motoko
+            </label><br>
+            <label>
+                <input type="radio" name="option" value="TypeScript"> TypeScript
+            </label><br>
+            <label>
+                <input type="radio" name="option" value="Python"> Python
+            </label><br>
+            <button type="submit">Vote</button>
+        </form>
+      </div>
+
+      <!-- Poll results appear here-->
+      <h2 id="results-title">Results</h2>
+      <div id="results"></div>
+    </div>
+    <button id="reset">Reset Poll</button>
+
+
+</body>
+</html>

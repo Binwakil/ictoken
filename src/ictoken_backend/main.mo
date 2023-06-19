@@ -1,34 +1,3 @@
-// actor {
-//   public query func greet(name : Text) : async Text {
-//     return "Hello, " # name # "!";
-//   };
-// };
-
-// import HashMap "mo:base/HashMap";
-// import Text "mo:base/Text";
-
-// actor Auction {
-//     type TokenIdentifier = Nat;
-//     type AuctionId = Text;
-
-//     type AuctionInfo = {
-//         tokenId : TokenIdentifier;
-//         startingPrice : Nat;
-//         highestBid : Nat;
-//         highestBidder : ?Principal;
-//         auctionEnded : Bool;
-//     };
-
-//     public query func greet(name : Text) : async Text {
-//     return "Hello, " # name # "!";
-//   };
-
-  
-
-
-// };
-
-
 import RBTree "mo:base/RBTree";
 import Nat "mo:base/Nat";
 import Text "mo:base/Text";
