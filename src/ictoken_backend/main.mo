@@ -2,12 +2,24 @@ import RBTree "mo:base/RBTree";
 import Nat "mo:base/Nat";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
+import HashMap "mo:base/HashMap";
 
 actor {
 
   var question: Text = "What is your favorite programming language?";
   var votes: RBTree.RBTree<Text, Nat> = RBTree.RBTree(Text.compare);
+   type TokenIdentifier = Nat;
+    type AuctionId = Text;
 
+    type AuctionInfo = {
+        tokenId : TokenIdentifier;
+        startingPrice : Nat;
+        highestBid : Nat;
+        highestBidder : ?Principal;
+        auctionEnded : Bool;
+    };
+
+   
 
   public query func getQuestion() : async Text { 
     question 
@@ -58,5 +70,20 @@ actor {
       votes.put("Python", 0);
       Iter.toArray(votes.entries())
   };
+
+    
+
+    public query func getAuctionInfo(auctionId : AuctionId) : async Text {
+       "Token Information"
+    };
+
+     func containsKey<K, V>(map: HashMap.HashMap<K, V>, key: K): Bool {
+        if ("AuctionId" == null) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
 
 };
