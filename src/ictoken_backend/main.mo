@@ -1,89 +1,234 @@
-import RBTree "mo:base/RBTree";
+import Debug "mo:base/Debug";
 import Nat "mo:base/Nat";
 import Text "mo:base/Text";
 import Iter "mo:base/Iter";
 import HashMap "mo:base/HashMap";
+import Buffer "mo:base/Buffer";
+import Hash "mo:base/Hash";
+import Array "mo:base/Array";
+import Error "mo:base/Error";
+import List "mo:base/List";
+import RBTree "mo:base/RBTree";
+import Timer "mo:base/Timer";
+import TrieSet "mo:base/TrieSet";
+import Principal "mo:base/Principal";
+import Result "mo:base/Result";
+import Time "mo:base/Time";
+import Types "types";
 
 actor {
+	type Auction = Types.Auction;
+	type Result = Types.Result;
+	type BiddersQueryResult = Types.BiddersQueryResult;
+	type BidTuple = Types.BidTuple;
+	type BidTupleBuffer = Buffer.Buffer<BidTuple>;
+	type AllAuctionBiddersQueryResult = Types.AllAuctionBiddersQueryResult;
 
-  var question: Text = "What is your favorite programming language?";
-  var votes: RBTree.RBTree<Text, Nat> = RBTree.RBTree(Text.compare);
-   type TokenIdentifier = Nat;
-    type AuctionId = Text;
+	let auctions = HashMap.HashMap<Nat, Auction>(0, Nat.equal, Hash.hash);
+	let pastBids = HashMap.HashMap<Nat, BidTupleBuffer>(0, Nat.equal, Hash.hash);
+	let balances = HashMap.HashMap<Principal, Nat>(0, Principal.equal, Principal.hash);
+	var auctionNum : Nat = 0;
 
-    type AuctionInfo = {
-        tokenId : TokenIdentifier;
-        startingPrice : Nat;
-        highestBid : Nat;
-        highestBidder : ?Principal;
-        auctionEnded : Bool;
-    };
+	public query func getAuctions() : async ([(Nat, Auction)]) {
+		let hashMapValues = auctions.entries();
+		Iter.toArray<(Nat, Auction)>(hashMapValues);
+	};
 
-   
+	public query func getAuctionPastBids(auctionID : Nat) : async BiddersQueryResult {
+		switch (getAuctionPastBidsAsBuffer(auctionID)) {
+			case (?pastBidsBuffer) {
+				#ok(Buffer.toArray<BidTuple>(pastBidsBuffer));
+			};
+			case (null) {
+				#err(#invalidID);
+			};
+		};
+	};
 
-  public query func getQuestion() : async Text { 
-    question 
-  };
+	public query func getAllPastBids() : async AllAuctionBiddersQueryResult {
+		let allBidsBuffer = Buffer.Buffer<(Nat, [BidTuple])>(pastBids.size());
+		for ((key, buffer) in pastBids.entries()) {
+			allBidsBuffer.add(key, Buffer.toArray<BidTuple>(buffer));
+		};
+		#ok(Buffer.toArray<(Nat, [BidTuple])>(allBidsBuffer));
+	};
 
-// query the list of entries and votes for each one
-// Example: 
-//      * JSON that the frontend will receive using the values above: 
-//      * [["Motoko","0"],["Python","0"],["Rust","0"],["TypeScript","0"]]
+	public query func getBalances() : async ([(Principal, Nat)]) {
+		let hashMapValues = balances.entries();
+		Iter.toArray<(Principal, Nat)>(hashMapValues);
+	};
 
-    public query func getVotes() : async [(Text, Nat)] {
-    
-        Iter.toArray(votes.entries())
-    
-    };
+	public shared (msg) func getMyBalance() : async Nat {
+		switch (balances.get(msg.caller)) {
+			case (null) 0;
+			case (?balance) balance;
+		};
+	};
 
- // This method takes an entry to vote for, updates the data and returns the updated hashmap
-// Example input: vote("Motoko")
-// Example: 
-//      * JSON that the frontend will receive using the values above: 
-//      * [["Motoko","1"],["Python","0"],["Rust","0"],["TypeScript","0"]]
-    
-  public func vote(entry: Text) : async [(Text, Nat)] {
+	func getBalance(user : Principal) : Nat {
+		switch (balances.get(user)) {
+			case (null) 0;
+			case (?balance) balance;
+		};
+	};
 
-    //Check if the entry already has votes.
-    //Note that "votes_for_entry" is of type ?Nat. This is because: 
-    // * If the entry is in the RBTree, the RBTree returns a number.
-    // * If the entry is not in the RBTree, the RBTree returns `null` for the new entry.
-    let votes_for_entry :?Nat = votes.get(entry);
-    
-    //Need to be explicit about what to do when it is null or a number so every case is taken care of
-    let current_votes_for_entry : Nat = switch votes_for_entry {
-      case null 0;
-      case (?Nat) Nat;
-    };
+	func getAuctionPastBidsAsBuffer(auctionID : Nat) : ?BidTupleBuffer {
+		switch (pastBids.get(auctionID)) {
+			case (null) {
+				null;
+			};
+			case (?pastBids) {
+				?pastBids;
+			};
+		};
+	};
 
-//once we have the number of votes, update the votes for the entry
-    votes.put(entry, current_votes_for_entry + 1);
+	func getAuction(auctionID : Nat) : ?Auction {
+		switch (auctions.get(auctionID)) {
+			case (null) {
+				null;
+			};
+			case (?auction) {
+				?auction;
+			};
+		};
+	};
 
-    //Return the number of votes as an array (so frontend can display it)
-    Iter.toArray(votes.entries())
-  };
+	public shared (msg) func newUser(balance : Nat) : async Principal {
+		balances.put(msg.caller, balance);
+		msg.caller;
+	};
 
-    public func resetVotes() : async [(Text, Nat)] {
-      votes.put("Motoko", 0);
-      votes.put("Rust", 0);
-      votes.put("TypeScript", 0);
-      votes.put("Python", 0);
-      Iter.toArray(votes.entries())
-  };
+	public shared (msg) func newAuction(aucDuration : Int, aucStartPrice : Nat, tokenID : Text) : async Nat {
+		let auction : Auction = {
+			creator = msg.caller;
+			endTime = Time.now() + (aucDuration * 10 ** 9);
+			endPrice = aucStartPrice;
+			startPrice = aucStartPrice;
+			startTime = Time.now();
+			topBidder = null;
+			tokenID = tokenID;
+			lastBidder = null;
+		};
 
-    
+		let bidBuffer : BidTupleBuffer = Buffer.Buffer<BidTuple>(1);
+		bidBuffer.add((msg.caller, aucStartPrice));
 
-    public query func getAuctionInfo(auctionId : AuctionId) : async Text {
-       "Token Information"
-    };
+		pastBids.put(auctionNum, bidBuffer);
+		auctions.put(auctionNum, auction);
+		auctionNum += 1;
+		auctionNum - 1;
+	};
 
-     func containsKey<K, V>(map: HashMap.HashMap<K, V>, key: K): Bool {
-        if ("AuctionId" == null) {
-            return true;
-        } else {
-            return false;
-        }
-    }
+	public shared (msg) func newBid(auctionID : Nat, amount : Nat) : async Result {
+		let bidder = msg.caller;
+		let bidderBalance = getBalance(bidder);
 
+		switch (getAuction(auctionID)) {
+			case (null) {
+				return #err(#invalidID);
+			};
+			case (?auction) {
+				if (isAuctionOngoing(auction)) {
+					return #err(#expiredAuction);
+				};
+				if (auction.endPrice > amount) {
+					return #err(#bidTooLow);
+				} else {
+					switch (auction.lastBidder) {
+						case (null) {
+							let status = await bidBalTransfer(bidder, auction.creator, amount);
+							if (Result.isErr(status)) {
+								return status;
+							};
+						};
+						case (?lastBidder) {
+							var status = await bidBalTransfer(auction.creator, lastBidder, auction.endPrice);
+							if (Result.isErr(status)) {
+								return status;
+							};
+							status := await bidBalTransfer(bidder, auction.creator, amount);
+							if (Result.isErr(status)) {
+								return status;
+							};
+						};
+					};
+					auctions.put(auctionID, updateBidder(auction, bidder, amount, auctionID));
+					switch (getAuctionPastBidsAsBuffer(auctionID)) {
+						case (null) {
+							return #err(#failed);
+						};
+						case (?currentPastBids) {
+							pastBids.put(auctionID, updatePastBids(currentPastBids, bidder, amount));
+						};
+					};
+					return #ok();
+				};
+			};
+		};
+	};
 
-};
+	func bidBalTransfer(from : Principal, to : Principal, amount : Nat) : async Result {
+		if (getBalance(from) < amount) {
+			return #err(#insufficientFunds);
+		};
+		let fromAmount = getBalance(from) - amount;
+		let toAmount = getBalance(to) + amount;
+		balances.put(from, fromAmount);
+		balances.put(to, toAmount);
+		return #ok();
+	};
+
+	func updateBidder(auction : Auction, bidder : Principal, amount : Nat, auctionNum : Nat) : Auction {
+		{
+			creator = auction.creator;
+			endTime = auction.endTime;
+			endPrice = amount;
+			startPrice = auction.startPrice;
+			startTime = auction.startTime;
+			topBidder = ?bidder;
+			tokenID = auction.tokenID;
+			lastBidder = auction.lastBidder;
+		};
+	};
+
+	func updatePastBids(auctionPastBids : BidTupleBuffer, bidder : Principal, bid : Nat) : BidTupleBuffer {
+		auctionPastBids.add((bidder, bid));
+		return auctionPastBids;
+	};
+
+	func isAuctionOngoing(auction : Auction) : Bool {
+		return auction.endTime < Time.now();
+	};
+
+	//Would need structure to update the topBidder's tokens, immediatly auction is completed
+	func transferToken(from : Principal, to : Principal, token : Text) : async Result {
+		// Working on it
+		return #ok();
+	};
+
+	//I'm having doubt on the action timer, should it run immediatly an auction is created, countinuesly running and call the completeAuction function if 15 minutes elapsed.
+
+	func auctionCompleted(auction : Auction, bidder : Principal) : async Result {
+		var status = await bidBalTransfer(bidder, auction.creator, auction.endPrice);
+		if (Result.isErr(status)) {
+			return status;
+		};
+		status := await transferToken(auction.creator, bidder, auction.tokenID);
+		if (Result.isErr(status)) {
+			return status;
+		};
+		return #ok();
+	};
+
+	public query func getAuctionInfo(auctionId : Nat) : async ?Auction {
+		switch (auctions.get(auctionId)) {
+			case (null) {
+				null;
+			};
+			case (?auction) {
+				?auction;
+			};
+		};
+	};
+}
